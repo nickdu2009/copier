@@ -1,12 +1,13 @@
 package copier_test
 
 import (
+	"database/sql/driver"
 	"errors"
 	"reflect"
 	"testing"
 	"time"
 
-	"github.com/jinzhu/copier"
+	"github.com/nickdu2009/copier"
 )
 
 type User struct {
@@ -240,7 +241,7 @@ func TestEmbeddedAndBase(t *testing.T) {
 	type Base struct {
 		BaseField1 int
 		BaseField2 int
-		User *User
+		User       *User
 	}
 
 	type Embed struct {
@@ -256,27 +257,27 @@ func TestEmbeddedAndBase(t *testing.T) {
 	embeded.EmbedField1 = 3
 	embeded.EmbedField2 = 4
 
-	user:=User{
-		Name:"testName",
+	user := User{
+		Name: "testName",
 	}
-	embeded.User=&user
+	embeded.User = &user
 
 	copier.Copy(&base, &embeded)
 
-	if base.BaseField1 != 1 || base.User.Name!="testName"{
+	if base.BaseField1 != 1 || base.User.Name != "testName" {
 		t.Error("Embedded fields not copied")
 	}
 
-	base.BaseField1=11
-	base.BaseField2=12
-	user1:=User{
-		Name:"testName1",
+	base.BaseField1 = 11
+	base.BaseField2 = 12
+	user1 := User{
+		Name: "testName1",
 	}
-	base.User=&user1
+	base.User = &user1
 
-	copier.Copy(&embeded,&base)
+	copier.Copy(&embeded, &base)
 
-	if embeded.BaseField1 != 11 || embeded.User.Name!="testName1" {
+	if embeded.BaseField1 != 11 || embeded.User.Name != "testName1" {
 		t.Error("base fields not copied")
 	}
 }
@@ -337,6 +338,55 @@ func TestScanner(t *testing.T) {
 	}
 
 	if s.V.V != s2.V.V {
+		t.Errorf("Field V should be copied")
+	}
+}
+
+type ValuerValue struct {
+	Name string
+}
+
+func (v *ValuerValue) Scan(src interface{}) error {
+	v.Name = string(src.([]byte))
+	return nil
+}
+
+func (v *ValuerValue) Value() (driver.Value, error) {
+	return []byte(v.Name), nil
+}
+
+type ValuerStruct struct {
+	V *ValuerValue
+}
+
+type ValuerStructTo struct {
+	V []byte
+}
+
+func TestValuer(t *testing.T) {
+	v := &ValuerStruct{
+		V: &ValuerValue{Name: "ValueTo"},
+	}
+
+	vTo := &ValuerStructTo{}
+
+	err := copier.Copy(vTo, v)
+	if err != nil {
+		t.Error("Should not raise error")
+	}
+
+	if v.V.Name != string(vTo.V) {
+		t.Errorf("Field V should be copied")
+	}
+
+	vTo.V = []byte("ValueFrom")
+	err = copier.Copy(v, vTo)
+
+	if err != nil {
+		t.Error("Should not raise error")
+	}
+
+	if v.V.Name != string(vTo.V) {
 		t.Errorf("Field V should be copied")
 	}
 }
