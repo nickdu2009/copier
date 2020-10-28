@@ -169,6 +169,9 @@ func set(to, from reflect.Value) bool {
 			}
 			from = reflect.ValueOf(value)
 		}
+	}
+
+	if from.IsValid() {
 		if to.Kind() == reflect.Ptr {
 			//set `to` to nil if from is nil
 			if from.Kind() == reflect.Ptr && from.IsNil() {
